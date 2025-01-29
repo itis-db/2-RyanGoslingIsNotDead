@@ -1,78 +1,147 @@
-create table author (
-	id serial primary key,
-	first_name varchar(100) not null,
-	last_name varchar(100) not null,
-	date_of_birth date,
-	date_of_death date,
-	biography text
-);
+WITH RECURSIVE author_generator AS (
+    SELECT 1 AS id,
+           'FirstName1' AS first_name,
+           'LastName1' AS last_name,
+           '1970-01-01'::date AS date_of_birth,
+           NULL::date AS date_of_death,
+           'Biography for Author 1' AS biography
+    UNION ALL
+    SELECT id + 1,
+           'FirstName' || (id + 1),
+           'LastName' || (id + 1),
+           ('1970-01-01'::date + (id + 1) * interval '1 day')::date,
+           NULL::date,
+           'Biography for Author ' || (id + 1)
+    FROM author_generator
+    WHERE id < 500
+)
+INSERT INTO author (id, first_name, last_name, date_of_birth, date_of_death, biography)
+SELECT id, first_name, last_name, date_of_birth, date_of_death, biography
+FROM author_generator;
+WITH RECURSIVE genre_generator AS (
+    SELECT 1 AS id,
+           'Genre1' AS name,
+           'Description for Genre 1' AS description
+    UNION ALL
+    SELECT id + 1,
+           'Genre' || (id + 1),
+           'Description for Genre ' || (id + 1)
+    FROM genre_generator
+    WHERE id < 500
+)
+INSERT INTO genre (id, name, description)
+SELECT id, name, description
+FROM genre_generator;
+WITH RECURSIVE publisher_generator AS (
+    SELECT 1 AS id,
+           'Publisher1' AS name,
+           'Address 1' AS adress,
+           '1234567890' AS phone_number,
+           'publisher1@example.com' AS email
+    UNION ALL
+    SELECT id + 1,
+           'Publisher' || (id + 1),
+           'Address ' || (id + 1),
+           '123456' || LPAD(id::text, 4, '0'),
+           'publisher' || (id + 1) || '@example.com'
+    FROM publisher_generator
+    WHERE id < 500
+)
+INSERT INTO publisher (id, name, adress, phone_number, email)
+SELECT id, name, adress, phone_number, email
+FROM publisher_generator;
+WITH RECURSIVE book_generator AS (
+    SELECT 1 AS id,
+           'BookTitle1' AS title,
+           2000 AS publication_year,
+           'Description for Book 1' AS description,
+           1 AS genre_id,
+           1 AS publisher_id
+    UNION ALL
+    SELECT id + 1,
+           'BookTitle' || (id + 1),
+           2000 + (id % 20),
+           'Description for Book ' || (id + 1),
+           (id % 500) + 1,
+           (id % 500) + 1
+    FROM book_generator
+    WHERE id < 500
+)
+INSERT INTO book (id, title, publication_year, description, genre_id, publisher_id)
+SELECT id, title, publication_year, description, genre_id, publisher_id
+FROM book_generator;
+WITH RECURSIVE book_author_generator AS (
+    SELECT 1 AS book_id, 1 AS author_id
+    UNION ALL
+    SELECT book_id + 1,
+           (author_id % 500) + 1
+    FROM book_author_generator
+    WHERE book_id < 500
+)
+INSERT INTO book_author (book_id, author_id)
+SELECT book_id, author_id
+FROM book_author_generator;
+WITH RECURSIVE book_copy_generator AS (
+    SELECT 1 AS id,
+           'New' AS condition,
+           'Location 1' AS location,
+           '2024-01-01'::date AS acquisition_date,
+           10.00 AS purchase_price,
+           1 AS book_id
+    UNION ALL
+    SELECT id + 1,
+           'Condition ' || (id % 3),
+           'Location ' || (id % 10),
+           ('2024-01-01'::date + (id * interval '1 day'))::date,
+           10.00 + (id % 100) * 0.5,
+           (id % 500) + 1
+    FROM book_copy_generator
+    WHERE id < 500
+)
+INSERT INTO book_copy (id, condition, location, acquisition_date, purchase_price, book_id)
+SELECT id, condition, location, acquisition_date, purchase_price, book_id
+FROM book_copy_generator;
+WITH RECURSIVE user_generator AS (
+    SELECT 1 AS id,
+           'FirstName1' AS first_name,
+           'LastName1' AS last_name,
+           'user1@example.com' AS email,
+           '1234567890' AS phone,
+           '1980-01-01'::date AS date_of_birth,
+           'password1' AS password
+    UNION ALL
+    SELECT id + 1,
+           'FirstName' || (id + 1),
+           'LastName' || (id + 1),
+           'user' || (id + 1) || '@example.com',
+           '123456' || LPAD(id::text, 4, '0'),
+           ('1980-01-01'::date + (id * interval '1 day'))::date,
+           'password' || (id + 1)
+    FROM user_generator
+    WHERE id < 500
+)
+INSERT INTO "user" (id, first_name, last_name, email, phone, date_of_birth, password)
+SELECT id, first_name, last_name, email, phone, date_of_birth, password
+FROM user_generator;
 
-create table genre (
-	id serial primary key,
-	name varchar(255) unique not null,
-	description text
-);
+WITH RECURSIVE order_generator AS (
+    SELECT 1 AS id,
+           NOW() AS order_date,
+           'Pending' AS status,
+           100.00 AS total_cost,
+           1 AS user_id,
+           1 AS book_copy_id
+    UNION ALL
+    SELECT id + 1,
+           NOW() + (id * interval '1 hour'),
+           CASE WHEN (id % 3) = 0 THEN 'Shipped' ELSE 'Pending' END,
+           100.00 + (id % 50),
+           (user_id % 500) + 1,
+           (book_copy_id % 500) + 1
+    FROM order_generator
+    WHERE id < 500
+)
+INSERT INTO "order" (id, order_date, status, total_cost, user_id, book_copy_id)
+SELECT id, order_date, status, total_cost, user_id, book_copy_id
+FROM order_generator;
 
-create table publisher (
-	id serial primary key,
-	name varchar(100) unique not null,
-	adress varchar(255),
-	phone_number varchar(20),
-	email varchar(255)
-);
-
-create table book (
-	id serial primary key,
-	title varchar(255) not null,
-	publication_year integer,
-	description text,
-	genre_id integer references genre(id),
-	publisher_id integer references publisher(id)
-);
-
-create table book_author (
-	book_id integer references book(id),
-	author_id integer references author(id),
-	primary key (book_id, author_id)
-);
-
-create table book_copy (
-	id serial primary key,
-	condition text,
-	location varchar(255),
-	acquisition_date date,
-	purchase_price decimal(10, 2),
-	book_id integer references book(id)
-);
-
-create table "user" (
-	id serial primary key,
-	first_name varchar(100) not null,
-	last_name varchar(100) not null,
-	email varchar(255),
-	phone varchar(20),
-	date_of_birth date,
-	password varchar(255)
-);
-
-create table "order" (
-	id serial primary key,
-	order_date timestamp default,
-	status varchar(255),
-	total_cost decimal(10, 2),
-	user_id integer references "user"(id),
-	book_copy_id integer references book_copy(id)
-);
-
---v2.sql
-ALTER TABLE "user" ADD COLUMN date_time timestamp DEFAULT current_timestamp;
-ALTER TABLE "user" ADD CONSTRAINT unique_email UNIQUE (email);
-ALTER TABLE "order" ADD COLUMN n integer DEFAULT 0;
-ALTER TABLE "order" ALTER COLUMN n TYPE NUMERIC(10, 2) USING n::numeric(10, 2);
-ALTER TABLE book ALTER COLUMN description TYPE varchar(100) USING description::varchar(100);
-
---rollback
-ALTER TABLE "user" DROP COLUMN date_time;
-ALTER TABLE "user" DROP CONSTRAINT unique_email;
-ALTER TABLE "order" DROP COLUMN n;
-ALTER TABLE book ALTER COLUMN description TYPE text USING description::text;
